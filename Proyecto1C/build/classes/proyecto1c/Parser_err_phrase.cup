@@ -1,0 +1,171 @@
+package proyecto1c;
+
+import java_cup.runtime.Symbol;
+import java.util.*;
+import java.io.FileWriter;
+import java.io.IOException;
+
+import proyecto1c.contracts.IOperation;
+import proyecto1c.contracts.IStatement;
+import proyecto1c.operations.*;
+import java.util.LinkedHashSet;
+
+parser code {:
+    public LinkedList<IStatement> AST = new LinkedList<>();
+    public LinkedList<String> syntaxErrors = new LinkedList<>();
+    private int errorCount = 0;
+
+    @Override
+    public void syntax_error(Symbol cur_token) {
+        report_error("Syntax error", cur_token);
+    }
+
+    @Override
+    public void report_error(String message, Object info) {
+        Symbol s = (Symbol) info;
+        errorCount++;
+        syntaxErrors.add(String.format("Error sintáctico en línea %d, columna %d: %s", s.left, s.right, message));
+    }
+
+    @Override
+    public void report_fatal_error(String message, Object info) throws Exception {
+        Symbol s = (Symbol) info;
+        errorCount++;
+        syntaxErrors.add(String.format("Error fatal en línea %d, columna %d: %s", s.left, s.right, message));
+        
+        // Modo pánico: Descartar tokens hasta encontrar un punto de sincronización
+        while (true) {
+            try {
+                Symbol token = scan();
+                if (token.sym == sym.SEMICOLON || token.sym == sym.EOF) {
+                    break;
+                }
+            } catch (Exception e) {
+                break;
+            }
+        }
+    }
+
+    @Override
+    public void unrecovered_syntax_error(Symbol s) throws Exception {
+        errorCount++;
+        syntaxErrors.add(String.format("Error de sintaxis no recuperable en línea %d, columna %d", s.left, s.right));
+    }
+
+    public void generateErrorReport(String filename) {
+        try (FileWriter writer = new FileWriter(filename)) {
+            writer.write("<html><head><title>Reporte de Errores</title><link rel=\"stylesheet\" href=\"style.css\"></head><body>");
+            writer.write("<h1>Reporte de Errores</h1>");
+            writer.write("<table border='1'><tr><th>#</th><th>Descripción</th></tr>");
+            
+            for (int i = 0; i < syntaxErrors.size(); i++) {
+                writer.write(String.format("<tr><td>%d</td><td>%s</td></tr>", i+1, syntaxErrors.get(i)));
+            }
+            
+            writer.write("</table></body></html>");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+:}
+
+terminal String CONJ, UNION, INTERSEC, DIFF, COMPLEMENT, RANGE, EVALUATION;
+terminal String VAR, NUMBER, OPERATION;
+terminal String COLON, COMMA, LPAREN, RPAREN, ARROW, SEMICOLON, LBRACE, RBRACE;
+terminal String SCOPE;
+terminal String LETTER, ASCII_CHAR;
+
+non terminal ini;
+non terminal LinkedList<IStatement> instrucciones;
+non terminal IStatement instruccion;
+non terminal SetDefine conjunto_def;
+
+non terminal SetReference conjunto;
+non terminal IOperation expr;
+non terminal SetOperation statement;
+non terminal IStatement scope_block;
+
+non terminal Set<Comparable> conjunto_elements;
+non terminal Set<Comparable> lista_elementos;
+non terminal Comparable elemento;
+
+start with ini;
+
+ini ::= LBRACE instrucciones:i RBRACE {: parser.AST = i; :}
+    | error {: parser.report_error("Error en la estructura principal del programa", cur_token); :};
+
+instrucciones ::= instrucciones:i instruccion:j {: RESULT = i; RESULT.add(j); :}
+                | instruccion:i {: RESULT = new LinkedList<IStatement>(); RESULT.add(i); :}
+                ;
+
+instruccion ::= conjunto_def:s {: RESULT = s; :}
+              | statement:s {: RESULT = s; :}
+              | scope_block:s {: RESULT = s; :}
+              | EVALUATION LPAREN LBRACE lista_elementos:elements RBRACE COMMA VAR:operationName RPAREN SEMICOLON
+                {: RESULT = new SetEvaluation(new LinkedHashSet<>(elements), operationName); :}
+              | error SEMICOLON {: 
+                    parser.report_error("Error en la instrucción", cur_token);
+                    parser.report_fatal_error("Recuperando desde el siguiente punto y coma", cur_token);
+                    RESULT = null; 
+                :};
+
+scope_block ::= SCOPE VAR:n LPAREN instrucciones:i RPAREN 
+    {: 
+        RESULT = new ScopeStatement(n, i); 
+    :}
+    | SCOPE error RPAREN {: 
+        parser.report_error("Error en la definición del scope", cur_token);
+        RESULT = null; 
+    :};
+
+conjunto_def ::= CONJ COLON VAR:n ARROW conjunto_elements:c SEMICOLON {: RESULT = new SetDefine(n, c); :}
+               | CONJ COLON error SEMICOLON {: 
+                    parser.report_error("Error en la definición del conjunto", cur_token);
+                    RESULT = new SetDefine("error", new HashSet<>()); 
+                :};
+
+conjunto_elements ::= elemento:start RANGE elemento:end 
+                    {: 
+                        Set<Comparable> range = new LinkedHashSet<>();
+                        int startValue = (start instanceof Integer) ? (Integer)start : (int)((Character)start).charValue();
+                        int endValue = (end instanceof Integer) ? (Integer)end : (int)((Character)end).charValue();
+                        for (int i = startValue; i <= endValue; i++) {
+                            if (start instanceof Integer) {
+                                range.add(i);
+                            } else {
+                                range.add((char)i);
+                            }
+                        }
+                        RESULT = range;
+                    :}
+                    | lista_elementos:l {: RESULT = l; :}
+                    ;
+
+lista_elementos ::= lista_elementos:l COMMA elemento:e {: RESULT = l; RESULT.add(e); :}
+                  | elemento:e {: RESULT = new LinkedHashSet<>(); RESULT.add(e); :}
+                  | error {: 
+                        parser.report_error("Error en la lista de elementos", cur_token);
+                        RESULT = new LinkedHashSet<>(); 
+                    :};
+
+elemento ::= NUMBER:n {: RESULT = Integer.parseInt(n); :}
+           | LETTER:l {: RESULT = l.charAt(0); :}
+           | ASCII_CHAR:c {: RESULT = c.charAt(0); :};
+
+conjunto ::= VAR:c {: RESULT = new SetReference(c); :};
+
+statement ::= OPERATION COLON VAR:n ARROW expr:e SEMICOLON {: RESULT = new SetOperation(n, e); :}
+             | OPERATION COLON error ARROW error SEMICOLON {: 
+                parser.report_error("Error en la definición de la operación", cur_token);
+                RESULT = null; 
+             :};
+
+expr ::= LBRACE conjunto:c RBRACE {: RESULT = c; :}
+       | UNION expr:e1 expr:e2 {: RESULT = new Union(e1, e2); :}
+       | INTERSEC expr:e1 expr:e2 {: RESULT = new Intersection(e1, e2); :}
+       | DIFF expr:e1 expr:e2 {: RESULT = new Difference(e1, e2); :}
+       | COMPLEMENT expr:e {: RESULT = new Complement(e); :}
+       | error {: 
+            parser.report_error("Error en la expresión", cur_token);
+            RESULT = null; 
+         :};

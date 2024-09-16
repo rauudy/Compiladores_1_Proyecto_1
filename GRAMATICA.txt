@@ -1,0 +1,40 @@
+<ini> ::= "{" <instrucciones> "}" 
+        | error;
+
+<instrucciones> ::= <instrucciones> <instruccion>
+                  | <instruccion>;
+
+<instruccion> ::= <conjunto_def>
+               | <statement>
+               | <scope_block>
+               | "EVALUATION" "(" "{" <lista_elementos> "}" "," VAR ")" ";"
+               | error ";";
+
+<scope_block> ::= "SCOPE" VAR "(" <instrucciones> ")" 
+                | "SCOPE" error ")";
+
+<conjunto_def> ::= "CONJ" ":" VAR "->" <conjunto_elements> ";"
+                 | "CONJ" ":" error ";";
+
+<conjunto_elements> ::= <elemento> "RANGE" <elemento>
+                      | <lista_elementos>;
+
+<lista_elementos> ::= <lista_elementos> "," <elemento>
+                    | <elemento>
+                    | error;
+
+<elemento> ::= NUMBER
+            | LETTER
+            | ASCII_CHAR;
+
+<conjunto> ::= VAR;
+
+<statement> ::= "OPERATION" ":" VAR "->" <expr> ";"
+              | "OPERATION" ":" error "->" error ";";
+
+<expr> ::= "{" <conjunto> "}"
+         | "UNION" <expr> <expr>
+         | "INTERSEC" <expr> <expr>
+         | "DIFF" <expr> <expr>
+         | "COMPLEMENT" <expr>
+         | error;

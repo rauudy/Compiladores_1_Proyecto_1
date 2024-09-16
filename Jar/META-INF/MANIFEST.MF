@@ -1,0 +1,7 @@
+Manifest-Version: 1.0
+Ant-Version: Apache Ant 1.10.14
+Created-By: 21.0.1+12-LTS-29 (Oracle Corporation)
+Class-Path: lib/java-cup-11b-runtime.jar lib/json-20240303.jar
+X-COMMENT: Main-Class will be added automatically by build
+Main-Class: proyecto1c.Proyecto1C
+
