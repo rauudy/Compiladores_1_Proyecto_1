@@ -1,6 +1,6 @@
 Raudy Cabrera - 201901973
 
-**MANUAL DE USUARIO ConjAnalyzer**
+# **MANUAL DE USUARIO ConjAnalyzer**
 
 El curso de Organización de Lenguajes y Compiladores 1, perteneciente a la Facultad de Ingeniería de la Universidad de San Carlos de Guatemala, requiere de usted, como conocedor de la construcción de analizadores Léxico y Sintáctico, crear un sistema que sea capaz de realizar operaciones entre conjuntos para que los estudiantes del curso Matemática para Computación 1 puedan verificar las respuestas de sus tareas y exámenes del curso.
 
@@ -51,7 +51,7 @@ Mostrará únicamente el resultado de las evaluaciones realizadas en la entrada.
 
 
 
-**MANUAL TÉCNICO ConjAnalyzer**
+# **MANUAL TÉCNICO ConjAnalyzer**
 
 El curso de Organización de Lenguajes y Compiladores 1, perteneciente a la Facultad de Ingeniería de la Universidad de San Carlos de Guatemala, requiere de usted, como conocedor de la construcción de analizadores Léxico y Sintáctico, crear un sistema que sea capaz de realizar operaciones entre conjuntos para que los estudiantes del curso Matemática para Computación 1 puedan verificar las respuestas de sus tareas y exámenes del curso.
 
